@@ -7,9 +7,10 @@
   <meta name="theme-color" content="#123e37">
   <title>Маршрут — служебный автомобиль</title>
   <link rel="stylesheet" href="/vendor/leaflet/leaflet.css?v=1.9.4">
-  <link rel="stylesheet" href="/style.css?v=8">
+  <link rel="stylesheet" href="/style.css?v=9">
   <script defer src="/vendor/leaflet/leaflet.js?v=1.9.4"></script>
-  <script defer src="/app.js?v=8"></script>
+  <script defer src="/tracker-status.js?v=9"></script>
+  <script defer src="/app.js?v=9"></script>
 </head>
 <body>
   <section id="login-view" class="login-shell">
@@ -32,7 +33,7 @@
       <div id="fleet-content" hidden>
         <section class="vehicle-strip"><div><label for="vehicle-select" class="eyebrow">АВТОМОБИЛЬ</label><select id="vehicle-select" aria-label="Автомобиль"></select><span id="vehicle-plate" class="muted"></span></div><div id="connection-status" class="status">Нет данных</div><div class="signal-info"><span class="eyebrow">ПОСЛЕДНЯЯ GPS-ТОЧКА</span><strong id="last-signal">—</strong><small id="last-contact" class="muted"></small></div></section>
         <div class="workspace"><section class="map-card"><div class="map-toolbar"><div class="view-tabs"><button id="live-button" class="tab active">Сейчас</button><button id="route-button" class="tab">Маршрут за день</button></div><button id="fit-button" class="quiet">Показать всё ↗</button></div><div id="map" role="region" aria-label="Карта автомобиля"></div><div class="map-bottom"><span id="map-note">Ожидание координат</span><span>GPS · обновление каждые 15 с</span></div></section>
-          <aside class="side-panel"><section class="live-card"><p class="eyebrow">СЕЙЧАС</p><div class="speed"><strong id="speed">—</strong><span>км/ч</span></div><div class="battery-row"><span>Батарея трекера</span><strong id="battery">—</strong></div><div class="battery-track"><div id="battery-bar"></div></div><p id="charging" class="muted">Нет сигнала от телефона</p></section><section class="history-card"><label for="history-date" class="eyebrow">ИСТОРИЯ ПОЕЗДОК</label><div class="date-row"><input id="history-date" type="date" required><button id="today-button" class="quiet">Сегодня</button></div><p id="timezone" class="muted"></p><dl class="day-stats"><div><dt>Пробег по GPS</dt><dd id="distance">—</dd></div><div><dt>В движении ≈</dt><dd id="moving">—</dd></div><div><dt>На остановках ≈</dt><dd id="parked">—</dd></div><div><dt>Макс. скорость</dt><dd id="max-speed">—</dd></div><div><dt>Первая / последняя точка</dt><dd id="first-last">—</dd></div><div><dt>Пропуски данных</dt><dd id="unknown">—</dd></div></dl><small class="muted">Расчёты приблизительные. Пробелы в данных не учитываются как движение или стоянка.</small></section></aside>
+          <aside class="side-panel"><section class="live-card"><p class="eyebrow">СЕЙЧАС</p><div class="speed"><strong id="speed">—</strong><span>км/ч</span></div><div class="battery-row"><span>Батарея трекера</span><strong id="battery">—</strong></div><div class="battery-track"><div id="battery-bar"></div></div><p id="charging" class="muted">Нет сигнала от телефона</p><p id="tracker-health" class="muted"></p></section><section class="history-card"><label for="history-date" class="eyebrow">ИСТОРИЯ ПОЕЗДОК</label><div class="date-row"><input id="history-date" type="date" required><button id="today-button" class="quiet">Сегодня</button></div><p id="timezone" class="muted"></p><dl class="day-stats"><div><dt>Пробег по GPS</dt><dd id="distance">—</dd></div><div><dt>В движении ≈</dt><dd id="moving">—</dd></div><div><dt>На остановках ≈</dt><dd id="parked">—</dd></div><div><dt>Макс. скорость</dt><dd id="max-speed">—</dd></div><div><dt>Первая / последняя точка</dt><dd id="first-last">—</dd></div><div><dt>Пропуски данных</dt><dd id="unknown">—</dd></div></dl><small class="muted">Расчёты приблизительные. Пробелы в данных не учитываются как движение или стоянка.</small></section></aside>
         </div>
         <section class="stops-section"><div class="section-heading"><div><p class="eyebrow">ХРОНОЛОГИЯ ДНЯ</p><h2>Остановки <span id="stop-count" class="count">0</span></h2></div><span class="muted">От 5 минут в одной зоне</span></div><div id="stops-list" class="stops-list"></div></section>
       </div>

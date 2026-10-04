@@ -29,7 +29,7 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         ScrollView scroll=new ScrollView(this);LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(dp(24),dp(24),dp(24),dp(24));scroll.addView(root);setContentView(scroll);
         if(Build.VERSION.SDK_INT>=30) scroll.setOnApplyWindowInsetsListener((v,insets)->{android.graphics.Insets bars=insets.getInsets(WindowInsets.Type.systemBars());v.setPadding(bars.left,bars.top,bars.right,bars.bottom);return insets;});
-        label(root,"Маршрут — трекер",27);
+        label(root,"Маршрут — трекер · "+BuildConfig.VERSION_NAME,27);
         label(root,"Телефон служебного автомобиля. Во время работы виден постоянный значок GPS-мониторинга.",14);
         info=label(root,"Загрузка состояния…",15);
         label(root,"Адрес сервера (HTTPS)",14);server=new EditText(this);server.setSingleLine(true);server.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_URI);server.setHint("https://gps.example.com");server.setText(Config.prefs(this).getString("url",""));root.addView(server);
@@ -80,7 +80,15 @@ public class MainActivity extends Activity {
         Intent battery=registerReceiver(null,new IntentFilter(Intent.ACTION_BATTERY_CHANGED));String batteryText="неизвестно";
         if(battery!=null){int level=battery.getIntExtra(BatteryManager.EXTRA_LEVEL,-1),scale=battery.getIntExtra(BatteryManager.EXTRA_SCALE,100);batteryText=(level>=0 && scale>0?level*100/scale+"%":"неизвестно")+(battery.getIntExtra(BatteryManager.EXTRA_PLUGGED,0)!=0?" · зарядка":" · от батареи");}
         String bg=Build.VERSION.SDK_INT<29 || checkSelfPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION)==PackageManager.PERMISSION_GRANTED?"разрешена":"нужно разрешить «Всегда»";
-        info.setText((p.getBoolean("enabled",false)?"Мониторинг включён":"Мониторинг остановлен")+"\nGPS: "+(fresh?"работает":"нет свежей точки")+"\nПоследняя точка: "+time(gps)+"\nПоследняя отправка: "+time(p.getLong("last_upload",0))+"\nОчередь: "+p.getLong("queue_count",0)+" точек\nБатарея: "+batteryText+"\nГеолокация в фоне: "+bg+"\n"+p.getString("status","Настройте сервер и разрешения"));
+        boolean enabled=p.getBoolean("enabled",false);
+        String service=TrackerService.active?"Служба трекера работает":enabled?"Служба не запущена — нажмите «Запустить трекер»":"Мониторинг остановлен";
+        boolean exempt=getSystemService(PowerManager.class).isIgnoringBatteryOptimizations(getPackageName());
+        info.setText(service+"\nGPS: "+(fresh?"работает":"нет свежей точки")
+            +"\nПоследняя точка: "+time(gps)+"\nОтправка координат: "+time(p.getLong("last_upload",0))
+            +"\nПроверка связи: "+time(p.getLong("last_heartbeat",0))
+            +"\nОчередь: "+p.getLong("queue_count",0)+" точек\nБатарея: "+batteryText+"\nГеолокация в фоне: "+bg
+            +"\nЭкономия батареи для трекера: "+(exempt?"отключена":"включена — отключите кнопкой 3")
+            +(TrackerService.active?"\n\n"+p.getString("gps_status","Ожидание GPS")+"\n"+p.getString("heartbeat_status","Ожидание проверки связи")+"\n"+p.getString("upload_status",""):""));
     }
     @Override protected void onResume(){super.onResume();handler.post(update);}
     @Override protected void onPause(){handler.removeCallbacks(update);super.onPause();}

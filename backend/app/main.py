@@ -15,7 +15,7 @@ from .analytics import analyze
 from .config import settings
 from .db import get_db, utcnow
 from .models import Admin, AdminSession, Device, LocationPoint, Vehicle
-from .schemas import BatchIn, DeviceIn, Login, VehicleIn
+from .schemas import BatchIn, DeviceIn, HeartbeatIn, Login, VehicleIn
 from .security import DUMMY_HASH, admin_session, owner_session, device_auth, digest, login_limit, origin_check, verify
 
 app = FastAPI(title="Fleet GPS", docs_url=None, redoc_url=None, openapi_url=None)
@@ -195,13 +195,30 @@ def latest(vehicle_id: int, db=Depends(get_db)):
     segments = analyze(recent, cfg, recent[0].gps_timestamp,
                        recent[-1].gps_timestamp + timedelta(microseconds=1))["segments"] if recent else []
     point = segments[-1][-1] if segments else None
-    contact = db.scalar(select(Device.last_seen).where(Device.vehicle_id == vehicle_id,
-                        Device.active.is_(True), Device.last_seen.is_not(None)).order_by(Device.last_seen.desc()).limit(1))
+    device = db.scalar(select(Device).where(Device.vehicle_id == vehicle_id,
+                        Device.active.is_(True), Device.last_seen.is_not(None)).order_by(Device.last_seen.desc(), Device.id.desc()).limit(1))
+    contact = device.last_seen if device else None
+    contact_age = max(0, int((utcnow() - contact).total_seconds())) if contact else None
+    connection = "offline" if contact_age is None or contact_age >= cfg.offline_seconds else "stale" if contact_age >= cfg.stale_seconds else "fresh"
+    health = dict(device.health, received_at=device.heartbeat_at,
+                  age_seconds=max(0, int((utcnow() - device.heartbeat_at).total_seconds()))) if device and device.health and device.heartbeat_at else None
     age = max(0, int((utcnow() - point["gps_timestamp"]).total_seconds())) if point else None
     status = "offline" if age is None or age >= cfg.offline_seconds else "stale" if age >= cfg.stale_seconds else "fresh"
     return {"point": point, "status": status,
             "age_seconds": age, "last_contact": contact,
-            "stale_seconds": cfg.stale_seconds, "offline_seconds": cfg.offline_seconds}
+            "stale_seconds": cfg.stale_seconds, "offline_seconds": cfg.offline_seconds,
+            "connection_status": connection, "contact_age_seconds": contact_age, "device_health": health}
+
+
+@app.post("/api/v1/heartbeat")
+def heartbeat(body: HeartbeatIn, device=Depends(device_auth), db=Depends(get_db)):
+    # Receipt time is authoritative. Heartbeats are snapshots, never queued GPS history.
+    now = utcnow()
+    device.last_seen = now
+    device.heartbeat_at = now
+    device.health = body.model_dump()
+    db.commit()
+    return {"server_time": now}
 
 
 def day_report(db, vehicle_id, day):

@@ -98,18 +98,28 @@ async function refresh() {
 function renderLive() {
   if (!latest || !csrf) return;
   const elapsed = (Date.now() - receivedAt) / 1000;
-  const age = latest.age_seconds == null ? null : latest.age_seconds + elapsed;
-  const status = age == null || age >= latest.offline_seconds ? 'offline' : age >= latest.stale_seconds ? 'stale' : 'fresh';
+  const s = trackerState(latest, elapsed), age = s.age;
   const p = latest.point;
-  const state = elapsed > 45 ? 'stale' : status;
-  $('connection-status').className = 'status ' + state;
-  text('connection-status', elapsed > 45 ? 'Сайт не получает обновления' : !p ? 'Нет GPS-данных' : status === 'offline' ? `Нет GPS-сигнала ${duration(age)}` : status === 'stale' ? `Данные устарели · ${duration(age)}` : p.speed > 3 ? 'В движении' : 'На месте');
+  const h = latest.device_health;
+  let label = s.gpsFresh ? p?.speed > 3 ? 'В движении' : 'На месте' : 'Телефон на связи · нет свежего GPS';
+  if (s.healthFresh && !h.location_permission) label = 'Телефон на связи · нет разрешения GPS';
+  else if (s.healthFresh && !h.gps_enabled) label = 'Телефон на связи · GPS выключен';
+  else if (!s.gpsFresh && s.healthFresh && h.gps_age_seconds != null && h.gps_age_seconds + h.age_seconds + elapsed < latest.stale_seconds && h.queue_count > 0) label = 'Телефон на связи · точки ожидают отправки';
+  if (s.connection !== 'fresh') label = s.contactAge == null ? 'Телефон ещё не подключён' : s.connection === 'offline' ? `Нет связи ${duration(s.contactAge)}` : `Давно нет связи · ${duration(s.contactAge)}`;
+  if (!s.siteFresh) label = 'Сайт не получает обновления';
+  $('connection-status').className = 'status ' + s.state;
+  text('connection-status', label);
   text('last-signal', p ? `${fmtTime(p.gps_timestamp)} · ${duration(age)} назад` : 'Ещё не поступала');
-  text('last-contact', latest.last_contact ? `Последний приём сервером: ${fmtTime(latest.last_contact)}` : 'Телефон ещё не подключён');
-  text('speed', p?.speed != null && state === 'fresh' ? Math.round(p.speed) : '—');
-  text('battery', p?.battery_level != null ? `${p.battery_level}%` : '—');
-  $('battery-bar').style.width = `${p?.battery_level ?? 0}%`;
-  text('charging', !p ? 'Нет сигнала от телефона' : `${p.charging == null ? 'Зарядка неизвестна' : p.charging ? 'Подключён к зарядке' : 'Работает от батареи'}${state !== 'fresh' ? ' · последний сигнал' : ''}`);
+  text('last-contact', latest.last_contact ? `Связь с телефоном: ${fmtTime(latest.last_contact)} · ${duration(s.contactAge)} назад` : 'Телефон ещё не подключён');
+  text('speed', s.speed != null ? Math.round(s.speed) : '—');
+  text('battery', s.battery?.battery_level != null ? `${s.battery.battery_level}%` : '—');
+  $('battery-bar').style.width = `${s.battery?.battery_level ?? 0}%`;
+  text('charging', !s.battery ? 'Нет сигнала от телефона' : `${s.battery.charging == null ? 'Зарядка неизвестна' : s.battery.charging ? 'Подключён к зарядке' : 'Работает от батареи'}${!s.batteryFresh ? ' · последний сигнал' : ''}`);
+  let diagnostics = h ? `Трекер ${h.app_version} · очередь ${h.queue_count}${!s.healthFresh ? ' · данные устарели' : ''}` : 'Для проверки связи без GPS обновите трекер до 1.0.2';
+  if (s.healthFresh && !h.background_permission) diagnostics += '\nРазрешите геолокацию «Всегда»';
+  if (s.healthFresh && !h.battery_optimization_exempt) diagnostics += '\nОтключите экономию батареи для трекера';
+  if (s.batteryFresh && s.battery?.battery_level != null && s.battery.battery_level <= 20 && s.battery.charging === false) diagnostics += '\nНизкий заряд — подключите питание';
+  text('tracker-health', diagnostics);
 }
 
 function renderStats() {
@@ -175,7 +185,7 @@ function selectionChanged() {
   generation++; latest=report=null; needFit=true; layers?.clearLayers(); if(car){car.remove();car=null;}
   for(const id of ['speed','battery','last-signal','last-contact','distance','moving','parked','max-speed','first-last','unknown']) text(id,'—');
   $('battery-bar').style.width='0%'; $('connection-status').className='status';text('connection-status','Обновление…');
-  text('charging','Загрузка состояния');text('map-note','Загрузка выбранного дня');text('stop-count','—');$('stops-list').replaceChildren();
+  text('charging','Загрузка состояния');text('tracker-health','');text('map-note','Загрузка выбранного дня');text('stop-count','—');$('stops-list').replaceChildren();
   refresh();
 }
 

@@ -29,7 +29,7 @@ main{max-width:1500px;margin:auto;padding:34px 4.5% 0}
 .vehicle-strip select{border:0;background:transparent;max-width:100%;font-size:22px;font-weight:600;color:#163e33;padding:0 20px 0 0}
 .vehicle-strip label{margin-bottom:5px}
 #vehicle-plate{display:block;margin-top:5px}
-.status{background:#f0f2ef;padding:8px 12px;font-size:12px;font-weight:600;border-radius:30px;white-space:nowrap}
+.status{background:#f0f2ef;padding:8px 12px;font-size:12px;font-weight:600;border-radius:16px;max-width:100%;line-height:1.5;overflow-wrap:anywhere}
 .status::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#8c9591;margin-right:7px}
 .status.fresh{background:#e7f3eb;color:#26704b}
 .status.fresh::before{background:#398156}
@@ -58,6 +58,7 @@ main{max-width:1500px;margin:auto;padding:34px 4.5% 0}
 .battery-track{height:4px;background:#40715b;border-radius:10px;margin:11px 0}
 .battery-track>div{height:4px;width:0;background:#d6e7a3;border-radius:10px}
 .live-card p:last-child{margin:0;font-size:11px}
+#tracker-health{white-space:pre-line;font-size:11px;line-height:1.6;border-top:1px solid #40715b;padding-top:12px;overflow-wrap:anywhere}
 .history-card{background:white;border:1px solid var(--line);padding:20px;border-radius:12px}
 .date-row{display:flex;align-items:center;gap:4px}
 .date-row input{min-width:0;width:100%;padding:9px 6px}
@@ -150,6 +151,7 @@ h1{font-size:29px}
 .map-bottom span:last-child{display:none}
 .live-card{padding:20px;display:grid;grid-template-columns:1fr 1fr;column-gap:20px;row-gap:8px}
 .live-card .eyebrow{grid-column:1/-1}
+.live-card #tracker-health{grid-column:1/-1}
 .live-card .speed{grid-row:2/5;align-self:center;margin-bottom:0}
 .live-card .battery-row,.live-card .battery-track,.live-card #charging{grid-column:2}
 .live-card .battery-track{margin:0}

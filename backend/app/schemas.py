@@ -44,3 +44,15 @@ class PointIn(StrictModel):
 
 class BatchIn(StrictModel):
     points: list[PointIn] = Field(min_length=1, max_length=500)
+
+
+class HeartbeatIn(StrictModel):
+    app_version: str = Field(min_length=1, max_length=32, pattern=r"^[0-9A-Za-z.+-]+$")
+    battery_level: int | None = Field(default=None, ge=0, le=100)
+    charging: bool | None = None
+    gps_enabled: bool
+    location_permission: bool
+    background_permission: bool
+    battery_optimization_exempt: bool
+    gps_age_seconds: int | None = Field(default=None, ge=0, le=2147483647)
+    queue_count: int = Field(ge=0, le=2147483647)
