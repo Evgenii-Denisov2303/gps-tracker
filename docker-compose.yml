@@ -1,0 +1,59 @@
+name: gps-tracker
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tracker
+      POSTGRES_USER: tracker
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env and set POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tracker -d tracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://tracker:${POSTGRES_PASSWORD}@db:5432/tracker
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-https://gps.example.com}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      TIMEZONE: ${TIMEZONE:-Europe/Moscow}
+      STALE_SECONDS: ${STALE_SECONDS:-180}
+      OFFLINE_SECONDS: ${OFFLINE_SECONDS:-600}
+      MAX_ACCURACY_M: ${MAX_ACCURACY_M:-80}
+      MAX_SPEED_KMH: ${MAX_SPEED_KMH:-180}
+      STOP_RADIUS_M: ${STOP_RADIUS_M:-50}
+      STOP_SECONDS: ${STOP_SECONDS:-300}
+      MAX_GAP_SECONDS: ${MAX_GAP_SECONDS:-180}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    logging: *logging
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    logging: *logging
+volumes:
+  postgres_data:

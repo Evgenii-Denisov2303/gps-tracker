@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="460" viewBox="0 0 1200 460" fill="none">
+  <title>Маршрут — свой GPS-мониторинг автомобиля</title>
+  <desc>Android-телефон передаёт координаты по HTTPS на собственный сервер. Владелец открывает закрытую карту в браузере. Схематичная иллюстрация без настоящих координат.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="460" gradientUnits="userSpaceOnUse"><stop stop-color="#103e37"/><stop offset="1" stop-color="#082c2b"/></linearGradient>
+    <linearGradient id="red" x1="844" y1="180" x2="869" y2="205" gradientUnits="userSpaceOnUse"><stop stop-color="#ff6772"/><stop offset="1" stop-color="#ca1333"/></linearGradient>
+  </defs>
+  <rect width="1200" height="460" rx="24" fill="url(#bg)"/>
+  <path d="M750 0V460M890 0V460M1030 0V460M640 95H1200M640 230H1200M640 365H1200" stroke="#fff" stroke-opacity=".04"/>
+  <rect x="48" y="44" width="42" height="42" rx="13" fill="#d9e7a9"/>
+  <path d="M61 74L77 57M65 57H77V69" stroke="#204a39" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="104" y="74" fill="#f7faf0" font-family="Arial,sans-serif" font-size="29" font-weight="700">маршрут</text>
+  <text x="49" y="159" fill="#f7faf0" font-family="Arial,sans-serif" font-size="45" font-weight="700">Машина на карте.</text>
+  <text x="49" y="216" fill="#d9e7a9" font-family="Arial,sans-serif" font-size="45" font-weight="700">Данные у вас.</text>
+  <text x="50" y="259" fill="#b7ccc5" font-family="Arial,sans-serif" font-size="18">Старый телефон → свой сервер → карта в браузере</text>
+  <rect x="49" y="296" width="126" height="32" rx="16" fill="#ffffff" fill-opacity=".08"/>
+  <text x="70" y="317" fill="#e9f0e6" font-family="Arial,sans-serif" font-size="14">Android 8.0+</text>
+  <rect x="187" y="296" width="114" height="32" rx="16" fill="#ffffff" fill-opacity=".08"/>
+  <text x="209" y="317" fill="#e9f0e6" font-family="Arial,sans-serif" font-size="14">Свой VPS</text>
+  <rect x="313" y="296" width="149" height="32" rx="16" fill="#ffffff" fill-opacity=".08"/>
+  <text x="332" y="317" fill="#e9f0e6" font-family="Arial,sans-serif" font-size="14">Доступ по паролю</text>
+  <path d="M50 370H579" stroke="#ffffff" stroke-opacity=".13"/>
+  <text x="50" y="407" fill="#9eb9ad" font-family="Arial,sans-serif" font-size="14">МАРШРУТЫ · ОСТАНОВКИ · ИСТОРИЯ · СОСТОЯНИЕ ТРЕКЕРА</text>
+  <g>
+    <rect x="663" y="44" width="489" height="363" rx="20" fill="#e9eee5"/>
+    <path d="M665 282L803 282 803 80M804 208H1150M915 80V405M1027 80V405M665 357H1150" stroke="#fff" stroke-width="15"/>
+    <path d="M1116 81C1030 151 1060 292 944 406" stroke="#d2ddc3" stroke-width="36"/>
+    <path d="M686 371C764 355 732 302 775 282H915V208H1007" stroke="#2a7966" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M686 371C764 355 732 302 775 282H915V208H1007" stroke="#d4e7bd" stroke-width="1.5" stroke-dasharray="2 9"/>
+    <circle cx="775" cy="282" r="10" fill="#fff" stroke="#2a7966" stroke-width="3"/>
+    <circle cx="915" cy="246" r="10" fill="#fff" stroke="#2a7966" stroke-width="3"/>
+    <g transform="translate(1008 208) rotate(90)">
+      <ellipse rx="25" ry="27" fill="#fff" fill-opacity=".8"/>
+      <rect x="-15" y="-15" width="6" height="11" rx="2" fill="#15352d"/>
+      <rect x="9" y="-15" width="6" height="11" rx="2" fill="#15352d"/>
+      <rect x="-15" y="9" width="6" height="11" rx="2" fill="#15352d"/>
+      <rect x="9" y="9" width="6" height="11" rx="2" fill="#15352d"/>
+      <path d="M0-27Q-12-27-12-15L-10 6-12 19Q-12 26 0 27Q12 26 12 19L10 6 12-15Q12-27 0-27Z" fill="#eb304c" stroke="#fff" stroke-width="1.5"/>
+      <path d="M-3-24V23M3-24V23" stroke="#ffeadd" stroke-width="2"/>
+      <path d="M-8-6Q0-10 8-6L6 3H-6L-8-6ZM-7 12H7V17H-7V12Z" fill="#193c4d"/>
+    </g>
+    <rect x="680" y="62" width="454" height="42" rx="10" fill="#fff"/>
+    <circle cx="699" cy="83" r="4" fill="#97ae9c"/>
+    <text x="712" y="88" fill="#294f43" font-family="Arial,sans-serif" font-size="13">СВОЯ КАРТА · СВОЯ ИСТОРИЯ</text>
+    <rect x="680" y="345" width="246" height="44" rx="10" fill="#fff"/>
+    <text x="696" y="372" fill="#466050" font-family="Arial,sans-serif" font-size="13">Схема · без реальных координат</text>
+  </g>
+</svg>

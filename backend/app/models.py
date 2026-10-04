@@ -1,0 +1,69 @@
+from datetime import datetime
+
+from sqlalchemy import Boolean, Float, ForeignKey, Index, Integer, String, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column
+
+from .db import Base, UTCDateTime, utcnow
+
+
+class Admin(Base):
+    __tablename__ = "admins"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(100), unique=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    read_only: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+
+
+class AdminSession(Base):
+    __tablename__ = "admin_sessions"
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    admin_id: Mapped[int] = mapped_column(ForeignKey("admins.id", ondelete="CASCADE"))
+    csrf_token: Mapped[str] = mapped_column(String(64))
+    expires_at: Mapped[datetime] = mapped_column(UTCDateTime(), index=True)
+
+
+class LoginLimit(Base):
+    __tablename__ = "login_limits"
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    count: Mapped[int] = mapped_column(Integer, default=0)
+    reset_at: Mapped[datetime] = mapped_column(UTCDateTime())
+
+
+class Vehicle(Base):
+    __tablename__ = "vehicles"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100))
+    plate: Mapped[str] = mapped_column(String(30), default="")
+    description: Mapped[str] = mapped_column(String(500), default="")
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class Device(Base):
+    __tablename__ = "devices"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    vehicle_id: Mapped[int] = mapped_column(ForeignKey("vehicles.id"), index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_seen: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+
+
+class LocationPoint(Base):
+    __tablename__ = "location_points"
+    __table_args__ = (
+        UniqueConstraint("device_id", "event_id", name="uq_device_event"),
+        Index("ix_vehicle_gps", "vehicle_id", "gps_timestamp"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    event_id: Mapped[str] = mapped_column(String(36))
+    vehicle_id: Mapped[int] = mapped_column(ForeignKey("vehicles.id"))
+    device_id: Mapped[int] = mapped_column(ForeignKey("devices.id"))
+    latitude: Mapped[float] = mapped_column(Float)
+    longitude: Mapped[float] = mapped_column(Float)
+    speed: Mapped[float | None] = mapped_column(Float, nullable=True)
+    accuracy: Mapped[float] = mapped_column(Float)
+    heading: Mapped[float | None] = mapped_column(Float, nullable=True)
+    battery_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    charging: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    gps_timestamp: Mapped[datetime] = mapped_column(UTCDateTime())
+    received_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)

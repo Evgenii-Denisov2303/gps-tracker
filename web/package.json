@@ -1,0 +1,7 @@
+{
+  "name": "fleet-gps-web",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {"vendor": "node vendor.mjs"},
+  "dependencies": {"leaflet": "1.9.4"}
+}

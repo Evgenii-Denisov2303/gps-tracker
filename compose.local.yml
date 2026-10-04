@@ -1,0 +1,8 @@
+services:
+  api:
+    environment:
+      PUBLIC_ORIGIN: http://localhost:8080
+      COOKIE_SECURE: "false"
+  web:
+    ports:
+      - "127.0.0.1:8080:80"
