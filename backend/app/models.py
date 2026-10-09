@@ -44,6 +44,8 @@ class Device(Base):
     vehicle_id: Mapped[int] = mapped_column(ForeignKey("vehicles.id"), index=True)
     name: Mapped[str] = mapped_column(String(100))
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    kind: Mapped[str] = mapped_column(String(20), default="android", server_default="android")
+    imei: Mapped[str | None] = mapped_column(String(15), unique=True, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_seen: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     heartbeat_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
@@ -63,9 +65,21 @@ class LocationPoint(Base):
     latitude: Mapped[float] = mapped_column(Float)
     longitude: Mapped[float] = mapped_column(Float)
     speed: Mapped[float | None] = mapped_column(Float, nullable=True)
-    accuracy: Mapped[float] = mapped_column(Float)
+    accuracy: Mapped[float | None] = mapped_column(Float, nullable=True)
     heading: Mapped[float | None] = mapped_column(Float, nullable=True)
     battery_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
     charging: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     gps_timestamp: Mapped[datetime] = mapped_column(UTCDateTime())
     received_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+
+class HardwareRecord(Base):
+    __tablename__ = "hardware_records"
+    __table_args__ = (UniqueConstraint("device_id", "record_hash", name="uq_hardware_record"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    device_id: Mapped[int] = mapped_column(ForeignKey("devices.id"))
+    record_hash: Mapped[str] = mapped_column(String(64))
+    event_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    received_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    fields: Mapped[dict] = mapped_column(JSON)
+    rejection: Mapped[str | None] = mapped_column(String(50), nullable=True)

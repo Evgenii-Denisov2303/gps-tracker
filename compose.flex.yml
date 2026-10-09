@@ -1,0 +1,30 @@
+# Private listener only. See docs/INSTALL_NAVTELECOM.md before enabling remotely.
+services:
+  flex:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    command: ["python", "-m", "app.flex_server"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://tracker:${POSTGRES_PASSWORD}@db:5432/tracker
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-https://gps.example.com}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      FLEX_HOST: 0.0.0.0
+      FLEX_TRUSTED_NETWORK: "true"
+      FLEX_ALLOWED_NETWORKS: ${FLEX_ALLOWED_NETWORKS:-}
+    ports:
+      - "127.0.0.1:5221:5221"
+    depends_on:
+      api:
+        condition: service_healthy
+    mem_limit: 256m
+    pids_limit: 64
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

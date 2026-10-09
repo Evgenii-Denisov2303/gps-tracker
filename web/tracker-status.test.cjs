@@ -38,3 +38,10 @@ test('disabled GPS or revoked permission hides speed even with a recent point',(
     assert.equal(s.speed,null);assert.equal(s.state,'stale');
   }
 });
+
+test('hardware navigation failure hides recent speed without Android permissions',()=>{
+  const valid=trackerState({...base,device_kind:'navtelecom',device_health:{age_seconds:1,gps_enabled:true,navigation_valid:true}});
+  assert.equal(valid.gpsFresh,true);
+  const invalid=trackerState({...base,device_kind:'navtelecom',device_health:{age_seconds:1,gps_enabled:true,navigation_valid:false}});
+  assert.equal(invalid.gpsFresh,false);assert.equal(invalid.speed,null);
+});

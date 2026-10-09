@@ -17,7 +17,7 @@ def serialize(p):
 
 
 def analyze(rows, cfg, start: datetime, end: datetime):
-    candidates = [p for p in rows if p.accuracy <= cfg.max_accuracy_m
+    candidates = [p for p in rows if (p.accuracy is None or p.accuracy <= cfg.max_accuracy_m)
                   and (p.speed is None or p.speed <= cfg.max_speed_kmh)]
     accepted = []
     rejected = len(rows) - len(candidates)
@@ -92,7 +92,7 @@ def analyze(rows, cfg, start: datetime, end: datetime):
             d = distance(prev, p)
             both_slow = slow and (prev.speed is None or prev.speed <= 3)
             # Suppress parking jitter; slow travel beyond the noise floor still counts.
-            jitter = both_slow and d <= min(cfg.stop_radius_m, max(10, prev.accuracy, p.accuracy))
+            jitter = both_slow and d <= min(cfg.stop_radius_m, max(10, prev.accuracy or 0, p.accuracy or 0))
             if not jitter:
                 travel_intervals.append((prev.gps_timestamp, p.gps_timestamp, d, dt))
     finish_stop()

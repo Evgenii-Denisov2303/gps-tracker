@@ -134,3 +134,25 @@ stopped_seconds, unknown_seconds, stop_count, point_count, filtered_points.
 для зрителя эти запросы возвращают 403 даже с действующей сессией и CSRF-токеном.
 Учётная запись зрителя не даёт права отправлять координаты: для этого нужен токен устройства.
 Вход, выход, защита сессии и ограничение попыток входа одинаковы для обеих ролей.
+
+
+## Автомобильный Navtelecom (экспериментальный приёмник)
+
+`POST /api/v1/vehicles/{id}/hardware-devices` — только владелец, с CSRF.
+Тело: `{"name":"START S-4011","imei":"15 цифр с прибора"}`.
+Ответ 201: id/kind/imei, без токена Android. Повторный IMEI — 409.
+Общий `DELETE /api/v1/devices/{id}` отзывает приём данных на следующем пакете.
+Список устройств содержит `kind` и `imei` только для владельца.
+`latest` содержит `device_kind`, аппаратную `device_health` с navigation_valid,
+satellites, main_voltage/backup_voltage. `point.accuracy` может быть null:
+прибор не сообщает метрическую точность. Android API по-прежнему требует accuracy.
+Подробности транспорта и обязательные ограничения: [INSTALL_NAVTELECOM.md](INSTALL_NAVTELECOM.md).
+
+
+### Сохранение входа
+
+`POST /api/v1/auth/login` принимает необязательный boolean `remember_me` (по умолчанию `false`).
+При `true` HttpOnly/Secure/SameSite=Strict cookie и серверная сессия действуют 30 дней без продления.
+При `false` cookie сессионная, серверный срок — `SESSION_HOURS` (по умолчанию 12 часов).
+Восстановление вкладок браузером может сохранять сессионные cookie; «Выйти» отзывает сессию на сервере в обоих режимах.
+Пароль не сохраняется в localStorage. Права owner/viewer и проверка CSRF сохраняются.

@@ -2,7 +2,8 @@
 const $ = id => document.getElementById(id);
 let csrf = '', zone = 'Europe/Moscow', vehicles = [], map, layers, car, latest, report;
 let mode = 'live', generation = 0, busy = false, receivedAt = 0, needFit = true;
-let canManage = false;
+let canManage = false, sessionUser = '';
+let favorite = null, favoriteMarker = null, pickingStop = false, pendingStop = null;
 const fmtTime = value => value ? new Intl.DateTimeFormat('ru-RU', {timeZone: zone, hour: '2-digit', minute: '2-digit'}).format(new Date(value)) : '—';
 const duration = seconds => seconds == null ? '—' : seconds < 60 ? `${Math.floor(seconds)} с` : seconds < 3600 ? `${Math.floor(seconds / 60)} мин` : `${Math.floor(seconds / 3600)} ч ${Math.floor(seconds % 3600 / 60)} мин`;
 const today = () => new Intl.DateTimeFormat('en-CA', {timeZone: zone, year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date());
@@ -15,13 +16,16 @@ async function api(path, options = {}) {
   if (!response.ok) {
     if (response.status === 401 && path !== '/auth/login') showLogin();
     const messages = {401: 'Неверный логин или пароль.', 403: 'Действие недоступно для этого аккаунта или сессия устарела.',
-      429: 'Слишком много попыток входа. Попробуйте через 15 минут.', 422: 'Проверьте введённые данные.'};
+      429: 'Слишком много попыток входа. Попробуйте через 15 минут.', 422: 'Проверьте введённые данные.',
+      409: 'Этот IMEI уже зарегистрирован, в том числе среди отключённых устройств.'};
     throw new Error(messages[response.status] || `Ошибка сервера (${response.status}). Попробуйте ещё раз.`);
   }
   return response.status === 204 ? null : response.json();
 }
 
 function showLogin() {
+  resetPassword(); $('login-password').value = ''; sessionUser = ''; clearFavorite();
+  $('install-dialog').close(); $('car-button').disabled = true;
   canManage = false; $('manage-button').hidden = true; $('add-first').hidden = true;
   generation++; csrf = ''; vehicles = []; latest = report = null; receivedAt = 0;
   $('dashboard').hidden = true; $('login-view').hidden = false;
@@ -41,6 +45,7 @@ function initMap() {
   layers = L.featureGroup().addTo(map);
   map.on('dragstart', () => {needFit = false;});
   map.on('zoomend', sizeCarMarker);
+  map.on('click', chooseStopPoint);
 }
 
 function sizeCarMarker() {
@@ -49,7 +54,7 @@ function sizeCarMarker() {
   // Small on a city overview, detailed nearby; the transparent tap target stays 44px.
   const height = Math.max(20, Math.min(40, 20 + (map.getZoom() - 11) * 3));
   art.style.height = `${height}px`;
-  art.style.width = `${height * .6}px`;
+  art.style.width = 'auto';
 }
 
 async function loadVehicles() {
@@ -59,11 +64,13 @@ async function loadVehicles() {
   if (vehicles.some(v => String(v.id) === old)) $('vehicle-select').value = old;
   $('empty-state').hidden = vehicles.length > 0; $('fleet-content').hidden = vehicles.length === 0;
   $('device-form').hidden = vehicles.length === 0;
+  $('hardware-form').hidden = vehicles.length === 0;
   if (!vehicles.length) text('sync-label', canManage ? 'Сервер доступен · добавьте автомобиль' : 'Сервер доступен · ожидаем автомобиль');
   if (vehicles.length) initMap();
 }
 
 async function enter(session) {
+  sessionUser = session.username; resetPassword(); $('login-password').value = '';
   canManage = session.role === 'owner';
   $('manage-button').hidden = !canManage; $('add-first').hidden = !canManage;
   text('access-label', canManage ? 'Владелец' : 'Только просмотр');
@@ -74,7 +81,7 @@ async function enter(session) {
   $('login-view').hidden = true; $('dashboard').hidden = false;
   $('history-date').value = today(); $('history-date').max = today();
   text('timezone', `Часовой пояс: ${zone}`);
-  await loadVehicles(); await refresh();
+  await loadVehicles(); loadFavorite(); await refresh();
 }
 
 function warn(message) {text('error-banner', message); $('error-banner').hidden = !message;}
@@ -89,6 +96,7 @@ async function refresh() {
     [latest, report] = result; receivedAt = Date.now();
     warn(''); text('sync-label', `Обновлено в ${fmtTime(receivedAt)}`);
     text('vehicle-plate', vehicles.find(v => String(v.id) === id)?.plate || 'Служебный автомобиль');
+    $('car-button').disabled = !latest.point;
     renderStats(); renderMap(); renderLive();
   } catch (e) {
     if (current === generation && csrf) {warn(e.name === 'TimeoutError' || e instanceof TypeError ? 'Сервер недоступен. Показаны последние полученные данные.' : e.message); text('sync-label', 'Не удалось обновить');}
@@ -101,8 +109,9 @@ function renderLive() {
   const s = trackerState(latest, elapsed), age = s.age;
   const p = latest.point;
   const h = latest.device_health;
+  const hardware = latest.device_kind === "navtelecom";
   let label = s.gpsFresh ? p?.speed > 3 ? 'В движении' : 'На месте' : 'Телефон на связи · нет свежего GPS';
-  if (s.healthFresh && !h.location_permission) label = 'Телефон на связи · нет разрешения GPS';
+  if (s.healthFresh && h.location_permission === false) label = 'Телефон на связи · нет разрешения GPS';
   else if (s.healthFresh && !h.gps_enabled) label = 'Телефон на связи · GPS выключен';
   else if (!s.gpsFresh && s.healthFresh && h.gps_age_seconds != null && h.gps_age_seconds + h.age_seconds + elapsed < latest.stale_seconds && h.queue_count > 0) label = 'Телефон на связи · точки ожидают отправки';
   if (s.connection !== 'fresh') label = s.contactAge == null ? 'Телефон ещё не подключён' : s.connection === 'offline' ? `Нет связи ${duration(s.contactAge)}` : `Давно нет связи · ${duration(s.contactAge)}`;
@@ -116,9 +125,20 @@ function renderLive() {
   $('battery-bar').style.width = `${s.battery?.battery_level ?? 0}%`;
   text('charging', !s.battery ? 'Нет сигнала от телефона' : `${s.battery.charging == null ? 'Зарядка неизвестна' : s.battery.charging ? 'Подключён к зарядке' : 'Работает от батареи'}${!s.batteryFresh ? ' · последний сигнал' : ''}`);
   let diagnostics = h ? `Трекер ${h.app_version} · очередь ${h.queue_count}${!s.healthFresh ? ' · данные устарели' : ''}` : 'Для проверки связи без GPS обновите трекер до 1.0.2';
-  if (s.healthFresh && !h.background_permission) diagnostics += '\nРазрешите геолокацию «Всегда»';
-  if (s.healthFresh && !h.battery_optimization_exempt) diagnostics += '\nОтключите экономию батареи для трекера';
+  if (s.healthFresh && !hardware && !h.background_permission) diagnostics += '\nРазрешите геолокацию «Всегда»';
+  if (s.healthFresh && !hardware && !h.battery_optimization_exempt) diagnostics += '\nОтключите экономию батареи для трекера';
   if (s.batteryFresh && s.battery?.battery_level != null && s.battery.battery_level <= 20 && s.battery.charging === false) diagnostics += '\nНизкий заряд — подключите питание';
+  if (hardware) {
+    label = label.replaceAll('Телефон', 'Трекер').replaceAll('телефоном', 'трекером');
+    text('connection-status', label);
+    text('last-contact', latest.last_contact ? `Связь с трекером: ${fmtTime(latest.last_contact)} · ${duration(s.contactAge)} назад` : 'Трекер ещё не подключён');
+    text('battery', h?.main_voltage != null ? `${h.main_voltage.toFixed(2)} В` : '—');
+    text('charging', h?.backup_voltage != null ? `Резервная батарея: ${h.backup_voltage.toFixed(2)} В${s.healthFresh ? '' : ' · последний сигнал'}` : 'Напряжение ещё не поступало');
+    diagnostics = h ? `START S-4011 · спутников: ${h.satellites ?? '—'}${s.healthFresh ? '' : ' · данные устарели'}` : 'Ожидаем диагностику START S-4011';
+    if (s.healthFresh && !h.navigation_valid) diagnostics += '\nНет достоверной GPS-точки: проверьте обзор неба и установку';
+  }
+  text('battery-label', hardware ? 'Питание автомобиля' : 'Батарея трекера');
+  $('battery-bar').parentElement.hidden = hardware;
   text('tracker-health', diagnostics);
 }
 
@@ -161,15 +181,15 @@ function renderMap() {
   } else if (latest?.point) {
     const p = latest.point;
     const artwork = document.createElement('img');
-    artwork.src = '/car.svg?v=8'; artwork.alt = 'Красный спорткар'; artwork.className = 'car-art';
+    artwork.src = '/car-safdecor.webp?v=12'; artwork.alt = 'Автомобиль SafDecor'; artwork.className = 'car-art';
     if (Number.isFinite(p.heading)) artwork.style.transform = `rotate(${p.heading}deg)`;
     car = L.marker([p.latitude,p.longitude], {title:'Автомобиль — последняя GPS-точка',
       icon:L.divIcon({className:'car-marker', html:artwork, iconSize:[44,44], iconAnchor:[22,22], tooltipAnchor:[0,-22]})}).addTo(map);
     sizeCarMarker();
     const label = document.createElement('span'); label.textContent = `${vehicles.find(v => String(v.id) === vehicleId())?.name || 'Автомобиль'} · ${fmtTime(p.gps_timestamp)}`;
     car.bindTooltip(label, {direction:'top',offset:[0,0]});
-    L.circle([p.latitude,p.longitude], {radius:p.accuracy,color:'#22664f',weight:1,fillOpacity:.08}).addTo(layers);
-    text('map-note', `Последняя GPS-точка · точность ±${Math.round(p.accuracy)} м`);
+    if (Number.isFinite(p.accuracy)) L.circle([p.latitude,p.longitude], {radius:p.accuracy,color:'#22664f',weight:1,fillOpacity:.08}).addTo(layers);
+    text('map-note', Number.isFinite(p.accuracy) ? `Последняя GPS-точка · точность ±${Math.round(p.accuracy)} м` : 'Последняя GPS-точка · прибор не передаёт точность в метрах');
   } else text('map-note', 'Ожидание первой точной GPS-точки');
   if (needFit) {fit(); needFit = false;}
   map.invalidateSize();
@@ -182,6 +202,7 @@ function fit() {
 }
 function setMode(next) {mode=next; $('live-button').classList.toggle('active',next==='live'); $('route-button').classList.toggle('active',next==='route'); needFit=true; renderMap();}
 function selectionChanged() {
+  $('car-button').disabled = true; loadFavorite();
   generation++; latest=report=null; needFit=true; layers?.clearLayers(); if(car){car.remove();car=null;}
   for(const id of ['speed','battery','last-signal','last-contact','distance','moving','parked','max-speed','first-last','unknown']) text(id,'—');
   $('battery-bar').style.width='0%'; $('connection-status').className='status';text('connection-status','Обновление…');
@@ -194,29 +215,39 @@ async function loadDevices() {
   if (!vehicleId()) return;
   for (const d of await api(`/vehicles/${vehicleId()}/devices`)) {
     const row=document.createElement('div'); row.className='device-item';
-    const label=document.createElement('span'); label.textContent=`${d.name} · ${d.active?'активен':'отозван'}`;row.append(label);
+    const label=document.createElement('span'); label.textContent=`${d.name} · ${d.kind === 'navtelecom' ? 'FLEX · ' : ''}${d.active?'активен':'отозван'}`;row.append(label);
     if(d.active){const button=document.createElement('button');button.textContent='Отозвать';button.className='quiet';
-      button.addEventListener('click',async()=>{if(!confirm(`Отозвать токен «${d.name}»? Телефон перестанет передавать точки до ввода нового токена.`))return;
+      button.addEventListener('click',async()=>{if(!confirm(`Отключить «${d.name}»? Сервер перестанет принимать его данные.`))return;
         try{await api(`/devices/${d.id}`,{method:'DELETE'});await loadDevices();}catch(e){text('manage-error',e.message);}});row.append(button);}
     $('devices-list').append(row);
   }
 }
 async function manage(){if(!canManage)return;text('manage-error','');$('token-result').hidden=true;$('device-token').value='';$('device-form').hidden=!vehicleId();$('manage-dialog').showModal();try{await loadDevices();}catch(e){text('manage-error',e.message);}}
 
-$('login-form').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;text('login-error','');
-  try{const data=Object.fromEntries(new FormData(e.target));await enter(await api('/auth/login',{method:'POST',body:JSON.stringify(data)}));e.target.reset();}
+$('login-form').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button[type=submit]');button.disabled=true;text('login-error','');
+  try{const data=Object.fromEntries(new FormData(e.target));data.remember_me=$('remember-me').checked;resetPassword();await enter(await api('/auth/login',{method:'POST',body:JSON.stringify(data)}));e.target.reset();}
   catch(error){text('login-error',error instanceof TypeError?'Сервер недоступен. Проверьте соединение.':error.message);if(csrf)warn(error.message);}finally{button.disabled=false;}});
 $('logout-button').addEventListener('click',async()=>{try{await api('/auth/logout',{method:'POST'});showLogin();}catch(e){warn('Не удалось завершить сессию на сервере. Повторите выход после восстановления связи.');}});
 $('manage-button').addEventListener('click',manage);$('add-first').addEventListener('click',manage);
 $('close-manage').addEventListener('click',()=>$('manage-dialog').close());
 $('manage-dialog').addEventListener('close',()=>{$('device-token').value='';$('token-result').hidden=true;});
-$('vehicle-form').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;try{const v=await api('/vehicles',{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});await loadVehicles();$('vehicle-select').value=v.id;e.target.reset();$('device-form').hidden=false;selectionChanged();await loadDevices();}catch(err){text('manage-error',err.message);}finally{button.disabled=false;}});
+$('vehicle-form').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;try{const v=await api('/vehicles',{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});await loadVehicles();$('vehicle-select').value=v.id;e.target.reset();$('device-form').hidden=false;$('hardware-form').hidden=false;selectionChanged();await loadDevices();}catch(err){text('manage-error',err.message);}finally{button.disabled=false;}});
 $('device-form').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;try{const d=await api(`/vehicles/${vehicleId()}/devices`,{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});$('device-token').value=d.token;$('server-url').value=location.origin;$('token-result').hidden=false;e.target.reset();await loadDevices();}catch(err){text('manage-error',err.message);}finally{button.disabled=false;}});
+$('hardware-form').addEventListener('submit', async e => {
+  e.preventDefault(); const button = e.target.querySelector('button'); button.disabled = true;
+  try {
+    await api(`/vehicles/${vehicleId()}/hardware-devices`, {method:'POST', body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});
+    text('hardware-result', 'Трекер зарегистрирован. Теперь настройте соединение по инструкции INSTALL_NAVTELECOM. До первой связи телефон продолжит работать.');
+    e.target.reset(); await loadDevices();
+  } catch (err) {text('manage-error', err.message);} finally {button.disabled = false;}
+});
 $('vehicle-select').addEventListener('change',selectionChanged);
 $('history-date').addEventListener('change',()=>{if(!$('history-date').value)return;setMode('route');selectionChanged();});
 $('today-button').addEventListener('click',()=>{$('history-date').value=today();setMode('route');selectionChanged();});
 $('live-button').addEventListener('click',()=>setMode('live'));$('route-button').addEventListener('click',()=>setMode('route'));$('fit-button').addEventListener('click',fit);
+$('car-button').addEventListener('click', () => {if (!latest?.point) return; setMode('live'); map.setView([latest.point.latitude, latest.point.longitude], 16); car?.openTooltip();});
 setInterval(()=>{if(!document.hidden)refresh();},15000);setInterval(renderLive,1000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});
-$('login-form').querySelector('button').disabled = false;
+setupConvenience();
+$('login-form').querySelector('button[type=submit]').disabled = false;
 api('/auth/me').then(enter).catch(e=>{if(csrf)warn(e.message);});

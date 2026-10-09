@@ -7,7 +7,7 @@ function trackerState(latest, elapsed = 0) {
   const health = latest.device_health;
   const healthFresh = Boolean(health && health.age_seconds + elapsed < latest.stale_seconds);
   const gpsFresh = age != null && age < latest.stale_seconds &&
-    (!healthFresh || (health.gps_enabled !== false && health.location_permission !== false));
+    (!healthFresh || (health.gps_enabled !== false && health.location_permission !== false && health.navigation_valid !== false));
   const siteFresh = elapsed <= 45;
   const point = latest.point;
   const useHealthBattery = health?.battery_level != null && (!point || Date.parse(health.received_at) >= Date.parse(point.gps_timestamp));

@@ -11,6 +11,7 @@ class StrictModel(BaseModel):
 class Login(StrictModel):
     username: str = Field(min_length=1, max_length=100)
     password: str = Field(min_length=1, max_length=256)
+    remember_me: bool = False
 
 
 class VehicleIn(StrictModel):
@@ -21,6 +22,10 @@ class VehicleIn(StrictModel):
 
 class DeviceIn(StrictModel):
     name: str = Field(min_length=1, max_length=100)
+
+
+class HardwareDeviceIn(DeviceIn):
+    imei: str = Field(pattern=r"^[0-9]{15}$")
 
 
 class PointIn(StrictModel):

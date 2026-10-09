@@ -49,7 +49,7 @@ def device_auth(request: Request, db=Depends(get_db)):
     auth = request.headers.get("authorization", "")
     token = auth[7:] if auth.startswith("Bearer ") else ""
     device = db.scalar(select(Device).where(Device.token_hash == digest(token), Device.active.is_(True))) if token else None
-    if not device or not db.get(Vehicle, device.vehicle_id).active:
+    if not device or device.kind != "android" or not db.get(Vehicle, device.vehicle_id).active:
         raise HTTPException(401, "Invalid device token")
     return device
 

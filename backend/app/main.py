@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy import delete, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
@@ -15,7 +16,7 @@ from .analytics import analyze
 from .config import settings
 from .db import get_db, utcnow
 from .models import Admin, AdminSession, Device, LocationPoint, Vehicle
-from .schemas import BatchIn, DeviceIn, HeartbeatIn, Login, VehicleIn
+from .schemas import BatchIn, DeviceIn, HardwareDeviceIn, HeartbeatIn, Login, VehicleIn
 from .security import DUMMY_HASH, admin_session, owner_session, device_auth, digest, login_limit, origin_check, verify
 
 app = FastAPI(title="Fleet GPS", docs_url=None, redoc_url=None, openapi_url=None)
@@ -98,11 +99,12 @@ def login(body: Login, request: Request, response: Response, db=Depends(get_db))
     if old:
         db.execute(delete(AdminSession).where(AdminSession.token_hash == digest(old)))
     db.execute(delete(AdminSession).where(AdminSession.expires_at <= utcnow()))
+    lifetime = timedelta(days=30) if body.remember_me else timedelta(hours=settings().session_hours)
     db.add(AdminSession(token_hash=digest(raw), csrf_token=csrf, admin_id=user.id,
-                        expires_at=utcnow() + timedelta(hours=settings().session_hours)))
+                        expires_at=utcnow() + lifetime))
     db.commit()
     response.set_cookie("gps_session", raw, httponly=True, secure=settings().cookie_secure,
-                        samesite="strict", max_age=settings().session_hours * 3600, path="/")
+                        samesite="strict", max_age=int(lifetime.total_seconds()) if body.remember_me else None, path="/")
     return {"username": user.username, "role": "viewer" if user.read_only else "owner",
             "csrf_token": csrf, "timezone": settings().timezone}
 
@@ -146,7 +148,7 @@ def create_vehicle(body: VehicleIn, db=Depends(get_db)):
 @app.get("/api/v1/vehicles/{vehicle_id}/devices", dependencies=[Depends(owner_session)])
 def devices(vehicle_id: int, db=Depends(get_db)):
     vehicle_or_404(db, vehicle_id)
-    return [{"id": d.id, "name": d.name, "active": d.active, "last_seen": d.last_seen}
+    return [{"id": d.id, "name": d.name, "active": d.active, "last_seen": d.last_seen, "kind": d.kind, "imei": d.imei}
             for d in db.scalars(select(Device).where(Device.vehicle_id == vehicle_id).order_by(Device.id))]
 
 
@@ -158,6 +160,21 @@ def create_device(vehicle_id: int, body: DeviceIn, db=Depends(get_db)):
     db.add(d)
     db.commit()
     return {"id": d.id, "token": raw, "message": "Token is shown only once"}
+
+
+@app.post("/api/v1/vehicles/{vehicle_id}/hardware-devices", status_code=201, dependencies=[Depends(owner_session)])
+def create_hardware_device(vehicle_id: int, body: HardwareDeviceIn, db=Depends(get_db)):
+    vehicle_or_404(db, vehicle_id)
+    d = Device(vehicle_id=vehicle_id, name=body.name, kind="navtelecom", imei=body.imei,
+               token_hash=digest(secrets.token_urlsafe(32)))
+    db.add(d)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, "IMEI already registered, including revoked devices")
+    return {"id": d.id, "kind": d.kind, "imei": d.imei,
+            "message": "Configure FLEX 1.0 and private transport; see INSTALL_NAVTELECOM.md"}
 
 
 @app.delete("/api/v1/devices/{device_id}", status_code=204, dependencies=[Depends(owner_session)])
@@ -190,13 +207,14 @@ def locations(body: BatchIn, device=Depends(device_auth), db=Depends(get_db)):
 def latest(vehicle_id: int, db=Depends(get_db)):
     vehicle_or_404(db, vehicle_id)
     cfg = settings()
-    recent = list(reversed(list(db.scalars(select(LocationPoint).where(LocationPoint.vehicle_id == vehicle_id).order_by(
+    device = db.scalar(select(Device).where(Device.vehicle_id == vehicle_id,
+                        Device.active.is_(True), Device.last_seen.is_not(None)).order_by(Device.last_seen.desc(), Device.id.desc()).limit(1))
+    recent = list(reversed(list(db.scalars(select(LocationPoint).where(LocationPoint.vehicle_id == vehicle_id,
+                       LocationPoint.device_id == device.id if device else True).order_by(
                        LocationPoint.gps_timestamp.desc(), LocationPoint.id.desc()).limit(64)))))
     segments = analyze(recent, cfg, recent[0].gps_timestamp,
                        recent[-1].gps_timestamp + timedelta(microseconds=1))["segments"] if recent else []
     point = segments[-1][-1] if segments else None
-    device = db.scalar(select(Device).where(Device.vehicle_id == vehicle_id,
-                        Device.active.is_(True), Device.last_seen.is_not(None)).order_by(Device.last_seen.desc(), Device.id.desc()).limit(1))
     contact = device.last_seen if device else None
     contact_age = max(0, int((utcnow() - contact).total_seconds())) if contact else None
     connection = "offline" if contact_age is None or contact_age >= cfg.offline_seconds else "stale" if contact_age >= cfg.stale_seconds else "fresh"
@@ -207,7 +225,7 @@ def latest(vehicle_id: int, db=Depends(get_db)):
     return {"point": point, "status": status,
             "age_seconds": age, "last_contact": contact,
             "stale_seconds": cfg.stale_seconds, "offline_seconds": cfg.offline_seconds,
-            "connection_status": connection, "contact_age_seconds": contact_age, "device_health": health}
+            "device_kind": device.kind if device else None, "connection_status": connection, "contact_age_seconds": contact_age, "device_health": health}
 
 
 @app.post("/api/v1/heartbeat")
