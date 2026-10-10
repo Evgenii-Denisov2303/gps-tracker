@@ -171,7 +171,7 @@ function renderMap() {
   if (!map || !report) return;
   layers.clearLayers(); if (car) {car.remove(); car = null;}
   if (mode === 'route') {
-    report.segments.forEach(segment => L.polyline(segment.map(p => [p.latitude,p.longitude]), {color:'#22664f',weight:4,opacity:.85}).addTo(layers));
+    report.segments.forEach(segment => L.polyline(segment.map(p => [p.latitude,p.longitude]), {color:'#ba2b28',weight:4,opacity:.85}).addTo(layers));
     report.stops.forEach((s, i) => {
       const marker = L.marker([s.latitude,s.longitude], {icon:L.divIcon({className:'stop-marker',html:String(i+1),iconSize:[26,26]})}).addTo(layers);
       const tooltip = document.createElement('span'); tooltip.textContent = `${fmtTime(s.start)}–${fmtTime(s.end)} · ${duration(s.duration_seconds)}`;
@@ -181,14 +181,14 @@ function renderMap() {
   } else if (latest?.point) {
     const p = latest.point;
     const artwork = document.createElement('img');
-    artwork.src = '/car-safdecor.webp?v=12'; artwork.alt = 'Автомобиль SafDecor'; artwork.className = 'car-art';
+    artwork.src = '/car-safdecor.webp?v=13'; artwork.alt = 'Автомобиль SafDecor'; artwork.className = 'car-art';
     if (Number.isFinite(p.heading)) artwork.style.transform = `rotate(${p.heading}deg)`;
     car = L.marker([p.latitude,p.longitude], {title:'Автомобиль — последняя GPS-точка',
       icon:L.divIcon({className:'car-marker', html:artwork, iconSize:[44,44], iconAnchor:[22,22], tooltipAnchor:[0,-22]})}).addTo(map);
     sizeCarMarker();
     const label = document.createElement('span'); label.textContent = `${vehicles.find(v => String(v.id) === vehicleId())?.name || 'Автомобиль'} · ${fmtTime(p.gps_timestamp)}`;
     car.bindTooltip(label, {direction:'top',offset:[0,0]});
-    if (Number.isFinite(p.accuracy)) L.circle([p.latitude,p.longitude], {radius:p.accuracy,color:'#22664f',weight:1,fillOpacity:.08}).addTo(layers);
+    if (Number.isFinite(p.accuracy)) L.circle([p.latitude,p.longitude], {radius:p.accuracy,color:'#ba2b28',weight:1,fillOpacity:.08}).addTo(layers);
     text('map-note', Number.isFinite(p.accuracy) ? `Последняя GPS-точка · точность ±${Math.round(p.accuracy)} м` : 'Последняя GPS-точка · прибор не передаёт точность в метрах');
   } else text('map-note', 'Ожидание первой точной GPS-точки');
   if (needFit) {fit(); needFit = false;}

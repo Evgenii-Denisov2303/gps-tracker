@@ -4,22 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
-  <meta name="theme-color" content="#123e37">
-  <link rel="icon" href="/safdecor-mark.svg" type="image/svg+xml">
-  <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <meta name="theme-color" content="#ba2b28">
+  <link rel="icon" href="/safdecor-mark.svg?v=13" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest?v=13">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png?v=13">
   <meta name="apple-mobile-web-app-title" content="SafDecor">
   <title>SafDecor — Маршрут</title>
   <link rel="stylesheet" href="/vendor/leaflet/leaflet.css?v=1.9.4">
-  <link rel="stylesheet" href="/style.css?v=12">
+  <link rel="stylesheet" href="/style.css?v=13">
   <script defer src="/vendor/leaflet/leaflet.js?v=1.9.4"></script>
-  <script defer src="/tracker-status.js?v=12"></script>
-  <script defer src="/convenience.js?v=12"></script>
-  <script defer src="/app.js?v=12"></script>
+  <script defer src="/tracker-status.js?v=13"></script>
+  <script defer src="/convenience.js?v=13"></script>
+  <script defer src="/app.js?v=13"></script>
 </head>
 <body>
   <section id="login-view" class="login-shell">
-    <div class="login-intro"><img class="login-logo" src="/safdecor-logo.svg?v=12" alt="SafDecor innovative" width="316" height="64"><p class="eyebrow">СЛУЖЕБНЫЙ ТРАНСПОРТ</p><h1>Каждый маршрут.<br>В одном месте.</h1><p>Положение автомобиля, поездки и остановки — в вашем личном кабинете.</p><div class="login-line" aria-hidden="true"></div><small>Вход для владельца и приглашённых зрителей</small></div>
+    <div class="login-intro"><img class="login-logo" src="/safdecor-wordmark.png?v=13" alt="SafDecor" width="473" height="95"><p class="eyebrow">СЛУЖЕБНЫЙ ТРАНСПОРТ</p><h1>Каждый маршрут.<br>В одном месте.</h1><p>Положение автомобиля, поездки и остановки — в вашем личном кабинете.</p><div class="login-line" aria-hidden="true"></div><small>Вход для владельца и приглашённых зрителей</small></div>
     <form id="login-form" class="login-card" method="post" action="/api/v1/auth/login">
       <p class="eyebrow">МАРШРУТ / ВХОД</p><h2>Добро пожаловать</h2><p class="muted">Войдите, чтобы открыть карту автомобиля.</p>
       <label>Логин<input name="username" autocomplete="username" required maxlength="100"></label>
@@ -32,9 +32,9 @@
   </section>
 
   <div id="dashboard" hidden>
-    <header class="topbar"><a class="brand" href="/" aria-label="SafDecor — Маршрут, главная"><img class="header-logo" src="/safdecor-logo.svg?v=12" alt="SafDecor innovative" width="316" height="64"><span class="brand-caption">маршрут · транспорт</span></a><div class="top-actions"><span id="access-label" class="muted"></span><button id="manage-button" class="quiet" hidden>Устройства</button><button id="logout-button" class="quiet">Выйти</button></div></header>
+    <header class="topbar"><a class="brand" href="/" aria-label="SafDecor — Маршрут, главная"><img class="header-logo" src="/safdecor-wordmark.png?v=13" alt="SafDecor" width="473" height="95"><span class="brand-caption">маршрут · транспорт</span></a><div class="top-actions"><span id="access-label" class="muted"></span><button id="manage-button" class="quiet" hidden>Устройства</button><button id="logout-button" class="quiet">Выйти</button></div></header>
     <main>
-      <div class="page-title"><div><p class="eyebrow">ВАШ АВТОМОБИЛЬ</p><h1>Всё под контролем</h1></div><span id="sync-label" class="muted" aria-live="polite">Загрузка…</span></div>
+      <div class="page-title"><div><p class="eyebrow">SAFDECOR / ТРАНСПОРТ</p><h1>Ваш маршрут</h1></div><span id="sync-label" class="muted" aria-live="polite">Загрузка…</span></div>
       <div id="error-banner" role="alert" class="banner" hidden></div>
       <section id="empty-state" class="empty-state" hidden><span class="brand-mark">↗</span><h2 id="empty-title">Автомобилей пока нет</h2><p id="empty-description">Автомобиль появится здесь после добавления владельцем.</p><button id="add-first" class="primary" hidden>Добавить автомобиль</button></section>
       <div id="fleet-content" hidden>
